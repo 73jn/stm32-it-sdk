@@ -41,7 +41,9 @@
 // ---------------------------------------------------------------------------
 // serial 1 - is mapped to LPUART1
 // ---------------------------------------------------------------------------
-
+uint8_t byte;
+uint8_t tabResult[5];
+uint8_t tabToPrint[5];
 #if ( ITSDK_WITH_UART_RXIRQ & __UART_USART1 ) > 0 || ( ITSDK_WITH_UART_RXIRQ & __UART_LPUART1 ) > 0
 uint8_t __serial1_buffer[ITSDK_WITH_UART_RXIRQ_BUFSZ];
 volatile uint8_t __serial1_bufferRd;
@@ -53,6 +55,8 @@ volatile uint8_t __serial2_bufferRd;
 volatile uint8_t __serial2_bufferWr;
 #endif
 
+int serial1Counter = 0;
+int serial2Counter = 0;
 /**
  * Init the Serial 1 extra configurations
  */
@@ -68,7 +72,7 @@ void serial1_init() {
     __HAL_UART_DISABLE_IT(_uart,UART_IT_TC);
     __HAL_UART_DISABLE_IT(_uart,UART_IT_TXE);
     // Clear pending interrupt & co
-    HAL_UART_Receive_IT(_uart, __serial1_buffer, 1);
+    HAL_UART_Receive_IT(_uart, &byte, 1);
     _uart->Instance->RDR;
     _uart->Instance->ISR;
     _uart->Instance->ICR;
@@ -252,7 +256,7 @@ void serial2_init() {
     __HAL_UART_ENABLE_IT(&huart2,UART_IT_RXNE);
     __HAL_UART_DISABLE_IT(&huart2,UART_IT_TC);
     __HAL_UART_DISABLE_IT(&huart2,UART_IT_TXE);
-    HAL_UART_Receive_IT(&huart2, __serial2_buffer, 1);
+    HAL_UART_Receive_IT(&huart2, &byte, 1);
     huart2.Instance->RDR;
     huart2.Instance->ISR;
     huart2.Instance->ICR;
@@ -392,47 +396,30 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+	  if (huart->Instance == USART1)
+	  {
+		  static indexOfReceive;
+	    /* Transmit one byte with 100 ms timeout */
+		  if ((char)byte == 'R'){
+			  indexOfReceive = 0;
+		  }
+		  tabResult[indexOfReceive] = byte;
+		  indexOfReceive++;
+	    /* Receive one byte in interrupt mode */
+		  if (indexOfReceive!=5){
+			  HAL_UART_Receive_IT(&huart1, &byte, 1);
+		  }
+		  else {
+			  tabToPrint[0] = tabResult[0];
+			  tabToPrint[1] = tabResult[1];
+			  tabToPrint[2] = tabResult[2];
+			  tabToPrint[3] = tabResult[3];
+			  tabToPrint[4] = tabResult[4];
+			  //HAL_UART_Receive_IT(&huart1, &byte, 1); //Il faut mettre ca pour faire en continu la mesure
+			  indexOfReceive = 0;
+		  }
 
-	if (   __HAL_UART_GET_FLAG(huart, UART_FLAG_ORE)
-		|| __HAL_UART_GET_FLAG(huart, UART_FLAG_NE)
-		|| __HAL_UART_GET_FLAG(huart, UART_FLAG_FE)
-	) {
-		__HAL_UART_CLEAR_FLAG(huart, UART_FLAG_ORE);
-		__HAL_UART_CLEAR_FLAG(huart, UART_FLAG_NE);
-		__HAL_UART_CLEAR_FLAG(huart, UART_FLAG_FE);
-	}
-
-    do {
-		if ( false
-			#if ( ITSDK_WITH_UART & __UART_LPUART1 ) > 0
-				|| huart->Instance == LPUART1
-			#endif
-			#if ( ITSDK_WITH_UART & __UART_USART1 ) > 0
-				|| huart->Instance == USART1
-			#endif
-		) {
-			#if ( ITSDK_WITH_UART_RXIRQ & __UART_LPUART1 ) > 0 || ( ITSDK_WITH_UART_RXIRQ & __UART_USART1 ) > 0
-			// at this point the data is in __serial1_buffer[__serial1_bufferWr]
-			// only increment the pointer when we have an available space in the circular buffer
-			if ( ((__serial1_bufferWr+1) & (ITSDK_WITH_UART_RXIRQ_BUFSZ-1)) != __serial1_bufferRd  ) {
-				__serial1_bufferWr = ((__serial1_bufferWr+1) & (ITSDK_WITH_UART_RXIRQ_BUFSZ-1));
-			}
-			HAL_UART_Receive_IT(huart, &__serial1_buffer[__serial1_bufferWr], 1);
-			#endif
-		} else {
-			#if ( ITSDK_WITH_UART & __UART_USART2 ) > 0
-			if ( huart->Instance == USART2 ) {
-				#if ( ITSDK_WITH_UART_RXIRQ & __UART_USART2 ) > 0
-				// at this point the data is in __serial2_buffer[__serial2_bufferWr]
-				if ( ((__serial2_bufferWr+1) & (ITSDK_WITH_UART_RXIRQ_BUFSZ-1)) != __serial2_bufferRd  ) {
-					__serial2_bufferWr = ((__serial2_bufferWr+1) & (ITSDK_WITH_UART_RXIRQ_BUFSZ-1));
-				}
-				HAL_UART_Receive_IT(huart, &__serial2_buffer[__serial2_bufferWr], 1);
-				#endif
-			}
-			#endif
-		}
-	} while ( __HAL_UART_GET_FLAG(huart, UART_FLAG_RXNE) );
+	  }
 
 }
 
