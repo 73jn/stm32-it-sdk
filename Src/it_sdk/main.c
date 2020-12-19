@@ -105,8 +105,8 @@ void itsdk_setup() {
 	#if ITSDK_WITH_WDG != __WDG_NONE && ITSDK_WDG_MS > 0
 	  wdg_setupWithMaxMs(ITSDK_WDG_MS);
 	#endif
-	serial1_init();
-	serial2_init();
+	//serial1_init(); //Fait planter
+	//serial2_init();
 	#if ITSDK_WITH_CONSOLE == __ENABLE
 		itsdk_console_setup();
 	#endif

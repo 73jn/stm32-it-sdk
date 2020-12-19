@@ -410,7 +410,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 			  HAL_UART_Receive_IT(&huart1, &byte, 1);
 		  }
 		  else {
-			  tabToPrint[0] = tabResult[0];
+			  tabToPrint[0] = 0x30; //Force to 0
 			  tabToPrint[1] = tabResult[1];
 			  tabToPrint[2] = tabResult[2];
 			  tabToPrint[3] = tabResult[3];
