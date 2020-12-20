@@ -1,9 +1,9 @@
 /* ==========================================================
- * o_2smpb.c - Driver for Omron Temp & Pressure I2C driver
- *           - Support - 2SMPB-02B
+ * dps422.c - Driver for Infineon Temp & Pressure I2C driver
+ *           - Support - DPS422
  * Project : Disk91 SDK
  * ----------------------------------------------------------
- * Created on: 31 may 2020
+ * Created on: 06 jul 2020
  *     Author: Paul Pinault aka Disk91
  * ----------------------------------------------------------
  * Copyright (C) 2020 Disk91
@@ -30,16 +30,12 @@
 #if ITSDK_WITH_DRIVERS == __ENABLE
 
 #include <it_sdk/configDrivers.h>
-#if defined ITSDK_DRIVERS_O2SMPB && ITSDK_DRIVERS_O2SMPB == __ENABLE
-#include <drivers/temphygropressure/omron_2smpb-02b/o_2smpb.h>
+#if defined ITSDK_DRIVERS_DPS422 && ITSDK_DRIVERS_DPS422 == __ENABLE
+#include <drivers/temphygropressure/infineon_dps422/dps422.h>
 #include <it_sdk/wrappers.h>
 #include <it_sdk/logger/error.h>
 
-#include <math.h>
 
-#if ITSDK_DRIVERS_O2SMPB_VERSION != 0x2B
-#error "UNSUPPORTED 2SMPB-XX VESRION"
-#endif
 
 static drivers_o2smpb_conf_t __o2smpb_config = {0};
 

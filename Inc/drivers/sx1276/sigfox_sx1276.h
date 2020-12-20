@@ -28,7 +28,6 @@
 
 #include <it_sdk/config.h>
 #if ( ITSDK_WITH_SIGFOX_LIB == __ENABLE ) && (ITSDK_SIGFOX_LIB == __SIGFOX_SX1276)
-#include <it_sdk/sigfox/sigfox.h>
 #include <it_sdk/logger/logger.h>
 #include <drivers/sx1276/sigfox_lowlevel.h>
 
@@ -46,7 +45,7 @@ sx1276_sigfox_ret_t sx1276_sigfox_deinit( void );
 sx1276_sigfox_ret_t sx1276_sigfox_idle( void );
 sx1276_sigfox_ret_t sx1276_sigfox_getRssi(int16_t * rssi);
 sx1276_sigfox_ret_t sx1276_sigfox_getSeqId( uint16_t * seqId );
-sx1276_sigfox_ret_t sx1276_sigfox_setPower( uint8_t power );
+sx1276_sigfox_ret_t sx1276_sigfox_setPower( int8_t power );
 
 // Function you can override
 sx1276_sigfox_ret_t sx1276_sigfox_idle_used( void );

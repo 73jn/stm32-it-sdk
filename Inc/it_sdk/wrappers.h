@@ -73,7 +73,11 @@ serial_read_response_e serial1_read(char * c);
 serial_read_response_e serial2_read(char * c);
 
 typedef enum {
-	SERIAL_SPEED_4800 = 0,
+	SERIAL_SPEED_300 = 0,
+	SERIAL_SPEED_600,
+	SERIAL_SPEED_1200,
+	SERIAL_SPEED_2400,
+	SERIAL_SPEED_4800,
 	SERIAL_SPEED_9600,
 	SERIAL_SPEED_19200,
 	SERIAL_SPEED_38400,
@@ -140,7 +144,9 @@ typedef enum {
 	ITSDK_GPIO_ALT_TIMER2_TR,
 	ITSDK_GPIO_ALT_TIMER2_C1,
 	ITSDK_GPIO_ALT_SPI1_SCLK,
-	ITSDK_GPIO_ALT_SPI1_MOSI
+	ITSDK_GPIO_ALT_SPI1_MOSI,
+	ITSDK_GPIO_ALT_SPI1_MISO,
+	ITSDK_GPIO_ALT_SPI1_NSS
 
 } itsdk_gpio_alternate_t;
 
@@ -168,15 +174,19 @@ bool gpio_existAction(gpio_irq_chain_t * chain);
 void gpio_registerWakeUpAction(gpio_irq_chain_t * chain);
 void gpio_removeWakeUpAction();
 
+#if ITSDK_WITH_GPIO_HANDLER == __DISABLE
+void gpio_Callback(uint16_t GPIO_Pin);
+#endif
+
 // ================================================
 // spi
 #if ITSDK_WITH_SPI == __SPI_ENABLED
 typedef enum
 {
-  SPI_OK       = 0x00U,
-  SPI_ERROR    = 0x01U,
-  SPI_BUSY     = 0x02U,
-  SPI_TIMEOUT  = 0x03U
+  __SPI_OK       = 0x00U,
+  __SPI_ERROR    = 0x01U,
+  __SPI_BUSY     = 0x02U,
+  __SPI_TIMEOUT  = 0x03U
 } _SPI_Status;
 
 _SPI_Status spi_rwRegister(
@@ -223,10 +233,10 @@ void spi_reset(
 #if ITSDK_WITH_I2C == __I2C_ENABLED
 typedef enum
 {
-  I2C_OK       = 0x00U,
-  I2C_ERROR    = 0x01U,
-  I2C_BUSY     = 0x02U,
-  I2C_TIMEOUT  = 0x03U
+  __I2C_OK       = 0x00U,
+  __I2C_ERROR    = 0x01U,
+  __I2C_BUSY     = 0x02U,
+  __I2C_TIMEOUT  = 0x03U
 } _I2C_Status;
 
 _I2C_Status i2c_memWrite(

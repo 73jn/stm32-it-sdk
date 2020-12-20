@@ -108,6 +108,7 @@ static gnss_ret_e __quectelSwitchToHotStart();
 static gnss_ret_e __quectelSwitchToWarmStart();
 static gnss_ret_e __quectelSwitchToColdStart();
 static gnss_ret_e __quectelSwitchToFullColdStart();
+static gnss_ret_e __quectelStop();
 static quectel_status_t __quectel_status;
 
 
@@ -145,13 +146,16 @@ gnss_ret_e quectel_lxx_initLowPower(gnss_config_t * config) {
 	#if ITSDK_DRIVERS_GNSS_QUECTEL_MODEL == DRIVER_GNSS_QUECTEL_MODEL_L80
 	if ( ITSDK_DRIVERS_GNSS_QUECTEL_L8X_POWERON_PIN != __LP_GPIO_NONE ) {
 		gpio_configure(ITSDK_DRIVERS_GNSS_QUECTEL_L8X_POWERON_BANK,ITSDK_DRIVERS_GNSS_QUECTEL_L8X_POWERON_PIN,GPIO_OUTPUT_PP);
-		gpio_set(ITSDK_DRIVERS_GNSS_QUECTEL_L8X_POWERON_BANK,ITSDK_DRIVERS_GNSS_QUECTEL_L8X_POWERON_PIN);
+		#if ITSDK_DRIVERS_GNSS_QUECTEL_L8X_POWERON_POL == __HIGH
+			gpio_set(ITSDK_DRIVERS_GNSS_QUECTEL_L8X_POWERON_BANK,ITSDK_DRIVERS_GNSS_QUECTEL_L8X_POWERON_PIN);
+		#else
+			gpio_reset(ITSDK_DRIVERS_GNSS_QUECTEL_L8X_POWERON_BANK,ITSDK_DRIVERS_GNSS_QUECTEL_L8X_POWERON_PIN);
+		#endif
 		__quectel_status.hasBackupMode = 1;
 	} else {
 		__quectel_status.hasBackupMode = 0;
 	}
 	#endif
-
 
 	// Ensure all the conditions are ok for powering
 	#if ITSDK_DRIVERS_GNSS_QUECTEL_MODEL == DRIVER_GNSS_QUECTEL_MODEL_L86
@@ -169,7 +173,6 @@ gnss_ret_e quectel_lxx_initLowPower(gnss_config_t * config) {
 			#else
 			  gpio_reset(ITSDK_DRIVERS_GNSS_QUECTEL_L8X_POWERON_BANK,ITSDK_DRIVERS_GNSS_QUECTEL_L8X_POWERON_PIN);
 			#endif
-
 		}
 		__quectel_status.hasBackupMode = 1;
 	} else {
@@ -181,7 +184,7 @@ gnss_ret_e quectel_lxx_initLowPower(gnss_config_t * config) {
 	if  ( ITSDK_DRIVERS_GNSS_QUECTEL_NRESET_PIN != __LP_GPIO_NONE ) {
 		gpio_configure(ITSDK_DRIVERS_GNSS_QUECTEL_NRESET_BANK,ITSDK_DRIVERS_GNSS_QUECTEL_NRESET_PIN,GPIO_OUTPUT_PP);
 		gpio_reset(ITSDK_DRIVERS_GNSS_QUECTEL_NRESET_BANK,ITSDK_DRIVERS_GNSS_QUECTEL_NRESET_PIN);
-		itsdk_delayMs(20); // 10 ms min according to doc
+		itsdk_delayMs(30); // 10 ms min according to doc
 		gpio_set(ITSDK_DRIVERS_GNSS_QUECTEL_NRESET_BANK,ITSDK_DRIVERS_GNSS_QUECTEL_NRESET_PIN);
 	}
 
@@ -190,15 +193,20 @@ gnss_ret_e quectel_lxx_initLowPower(gnss_config_t * config) {
 		#if (ITSDK_LOGGER_MODULE & __LOG_MOD_GNSS) > 0
 			log_error("QUECTEL_L8X - Failed to detect\r\n");
 		#endif
+		__quectelStop();
 		return GNSS_NOTFOUND;
 	}
+
+	#if ITSDK_DRIVERS_GNSS_QUECTEL_MODEL == DRIVER_GNSS_QUECTEL_MODEL_L80
+	itsdk_delayMs(100);	// extra delay needed for L80
+	#endif
 
 	// Check with a no action code, failed if failed
 	sprintf(cmd,"$PMTK000*");
 	if ( __quectedSendCommand(cmd,DRIVER_GNSS_QUECTEL_CMD_MAXZ,DRIVER_GNSS_QUECTEL_CMD_TEST) != GNSS_SUCCESS ) {
+		__quectelStop();
 		return GNSS_FAILED;
 	}
-
 
 	// Get the firmware version (Quectel)
 	//sprintf(cmd,"$PQVERNO,R*");
@@ -297,6 +305,27 @@ static gnss_ret_e __quectelSetRunMode(gnss_run_mode_e mode) {
 	}
 }
 
+/**
+ * Power off the device if the feature is supported
+ */
+static gnss_ret_e __quectelStop() {
+	if ( ITSDK_DRIVERS_GNSS_QUECTEL_L8X_POWERON_PIN != __LP_GPIO_NONE ) {
+		// violent stop, no care
+		#if ITSDK_DRIVERS_GNSS_QUECTEL_L8X_POWERON_POL == __HIGH
+		  gpio_reset(ITSDK_DRIVERS_GNSS_QUECTEL_L8X_POWERON_BANK,ITSDK_DRIVERS_GNSS_QUECTEL_L8X_POWERON_PIN);
+		#else
+		  gpio_set(ITSDK_DRIVERS_GNSS_QUECTEL_L8X_POWERON_BANK,ITSDK_DRIVERS_GNSS_QUECTEL_L8X_POWERON_PIN);
+		#endif
+		#if ITSDK_DRIVERS_GNSS_QUECTEL_L8X_SERIAL_DISC == __ENABLE
+		__gnss_disconnectSerial();
+		#endif
+		__quectel_status.isInBackupMode = 1;	// Not really but needed for restarting
+		__quectel_status.isRunning = 0;
+		return GNSS_SUCCESS;
+	}
+	return GNSS_FAILED;
+}
+
 
 /**
  * Switch the GPS in backup mode. in the mode only V_Backup is still activated
@@ -311,6 +340,13 @@ static gnss_ret_e __quectelSwitchToStopWithMemoryRetention() {
 
 		// Choice 1 : we have a Hard VCC disconnect pin so we just disconnect it
 		if ( ITSDK_DRIVERS_GNSS_QUECTEL_L8X_POWERON_PIN != __LP_GPIO_NONE ) {
+			#if ITSDK_DRIVERS_GNSS_QUECTEL_MODEL == DRIVER_GNSS_QUECTEL_MODEL_L80
+				// request for perpetual backup mode
+				sprintf(cmd,"$PMTK225,4*");
+				__quectedSendCommand(cmd,DRIVER_GNSS_QUECTEL_CMD_MAXZ,DRIVER_GNSS_QUECTEL_CMD_NOACK);
+				itsdk_delayMs(100);
+			#endif
+
 			// violent stop, no care
 			#if ITSDK_DRIVERS_GNSS_QUECTEL_L8X_POWERON_POL == __HIGH
 			  gpio_reset(ITSDK_DRIVERS_GNSS_QUECTEL_L8X_POWERON_BANK,ITSDK_DRIVERS_GNSS_QUECTEL_L8X_POWERON_PIN);
@@ -363,21 +399,22 @@ static gnss_ret_e __quectelSwitchBackfromStopMode() {
 			#else
 			  gpio_reset(ITSDK_DRIVERS_GNSS_QUECTEL_L8X_POWERON_BANK,ITSDK_DRIVERS_GNSS_QUECTEL_L8X_POWERON_PIN);
 			#endif
+
 		}
 
   		// A reset should not be needed but it seems it is not working w/o it.
 		gpio_reset(ITSDK_DRIVERS_GNSS_QUECTEL_NRESET_BANK,ITSDK_DRIVERS_GNSS_QUECTEL_NRESET_PIN);
-		itsdk_delayMs(20); // 10 ms min according to doc
+		itsdk_delayMs(30); // 10 ms min according to doc
 		gpio_set(ITSDK_DRIVERS_GNSS_QUECTEL_NRESET_BANK,ITSDK_DRIVERS_GNSS_QUECTEL_NRESET_PIN);
+
 		__gnss_connectSerial();
   		__gnss_initSerial();
-
   	    if ( __quectelWaitForAck(DRIVER_GNSS_QUECTEL_CMD_RESTART) == GNSS_TIMEOUT) {
   	    	// We failed to wake up - reset !
   			gpio_reset(ITSDK_DRIVERS_GNSS_QUECTEL_NRESET_BANK,ITSDK_DRIVERS_GNSS_QUECTEL_NRESET_PIN);
   			itsdk_delayMs(20); // 10 ms min according to doc
   			gpio_set(ITSDK_DRIVERS_GNSS_QUECTEL_NRESET_BANK,ITSDK_DRIVERS_GNSS_QUECTEL_NRESET_PIN);
-  	  		 __gnss_initSerial();
+  			__gnss_initSerial();
   	  		ITSDK_ERROR_REPORT(ITSDK_ERROR_DRV_QUECTEL8X_FORCERST,0);
   			// Retrying
   			if ( __quectelWaitForAck(DRIVER_GNSS_QUECTEL_CMD_RESTART) == GNSS_TIMEOUT) {
@@ -385,6 +422,10 @@ static gnss_ret_e __quectelSwitchBackfromStopMode() {
   				return GNSS_FAILED;
   			}
   	    }
+		#if ITSDK_DRIVERS_GNSS_QUECTEL_MODEL == DRIVER_GNSS_QUECTEL_MODEL_L80
+  		  itsdk_delayMs(100);	// extra delay needed for L80
+		#endif
+
   	    __quectel_status.isInBackupMode = 0;
   	    return GNSS_SUCCESS;
 	}
@@ -565,6 +606,7 @@ static gnss_ret_e __quectelNMEA(gnss_data_t * data, uint8_t * line, uint16_t sz,
 	//__l[3]=0;
 	//log_info("[%s]",__l);
 
+	//log_info("[%s]",line);
 	switch (ret) {
 		case GNSS_PROPRIETARY: {
 			ret = GNSS_NOTSUPPORTED;

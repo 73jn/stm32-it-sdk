@@ -45,7 +45,7 @@
 #include <it_sdk/eeprom/sdk_config.h>
 #include <it_sdk/eeprom/sdk_state.h>
 #include "stm32l0xx.h"
-#include "spi.h"
+//#include "spi.h"
 
 
 uint8_t STLL_Radio_ReadReg(uint8_t address) {
@@ -219,12 +219,17 @@ void STLL_onSpiDmaTxComplete(void) {
 extern DMA_HandleTypeDef ITSDK_SX1276_SPIDMATX;
 #define __DMA_HANDLER ITSDK_SX1276_SPIDMATX
 
-extern SPI_HandleTypeDef hspi1;
+extern SPI_HandleTypeDef ITSDK_SX1276_SPI;
 #define __SPI_HANDLER ITSDK_SX1276_SPI
 
 void STLL_Transmit_DMA_Start( uint16_t *pDataSource, uint16_t Size)
 {
-  	LOG_DEBUG_SFXSX1276((">> STLL_Transmit_DMA_Start\r\n"));
+	// Buffer is stored in memory and has a size of 1600 Word = 3200 bytes
+	// This is the SpiTxBuffer declared in the Stm32 library. (this is really bad, it should be allocated only
+	// for the time of the transmission ... but it is static by-the-way.
+	// These 1600 word are corresponding to 0.2s of Sigfox transmission at 100bps
+	// So we have half/complete interrupt called on every 0.1s
+	LOG_DEBUG_SFXSX1276((">> STLL_Transmit_DMA_Start\r\n"));
 
     // Reconfigure SPI from scratch for the DMA transfer
     // SPI speed is 16MHz (SPI_BAUDRATEPRESCALER_2) 16B
@@ -280,9 +285,9 @@ void STLL_Transmit_DMA_Start( uint16_t *pDataSource, uint16_t Size)
 				&ITSDK_SX1276_SPI,
 				(uint8_t *)pDataSource,
 				Size,
-				STLL_onSpiDmaTxComplete,		// Normally only half Tx callback should be rise
-				STLL_onSpiDmaTxComplete
-		  ) != SPI_OK ) {
+				STLL_onSpiDmaTxComplete,		// Half Tx rised when first half of the buffer has been proceeded to replace this first half
+				STLL_onSpiDmaTxComplete			// Complete Tx rised when second half of the buffer has been proceeded to replace this second half
+		  ) != __SPI_OK ) {
 		  LOG_ERROR_SFXSX1276(("** spi_transmit_dma_start Error \r\n"));
 	}
 }
@@ -367,7 +372,9 @@ void STLL_TIM2_Init( uint32_t period ) {
 	__TIM_HANDLER.Init.CounterMode   = TIM_COUNTERMODE_UP;
 	__TIM_HANDLER.Init.Period        = period-1;
 	__TIM_HANDLER.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+	#ifndef ITSDK_WITHOUT_AUTORELOADPRELOAD		// Catena compatibility
 	__TIM_HANDLER.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+	#endif
 	HAL_TIM_Base_Init(&__TIM_HANDLER);
 	sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
 	HAL_TIM_ConfigClockSource(&__TIM_HANDLER, &sClockSourceConfig);

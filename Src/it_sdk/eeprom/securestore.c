@@ -651,6 +651,7 @@ static itsdk_console_return_e _itsdk_secStore_consolePriv(char * buffer, uint8_t
 			_itsdk_console_printf("SS:A:xxxx  : LoRa OTAA change AppEUI (8B hex)\r\n");
 			_itsdk_console_printf("SS:B:xxxx  : LoRa OTAA change AppKey (16B hex)\r\n");
 			_itsdk_console_printf("SS:C:xxxx  : LoRa OTAA change NwkKey (16B hex)\r\n");
+			_itsdk_console_printf("SS:D:xxxx  : LoRa OTAA change Nwk+App (16B hex)\r\n");
            #endif
 		  #endif
 		  #if ( defined(ITSDK_SIGFOX_ENCRYPTION) && ( ITSDK_SIGFOX_ENCRYPTION & __PAYLOAD_ENCRYPT_AESCTR ) > 0 ) || ( defined(ITSDK_LORAWAN_ENCRYPTION) && (( ITSDK_LORAWAN_ENCRYPTION & __PAYLOAD_ENCRYPT_AESCTR ) > 0) )
@@ -704,7 +705,7 @@ static itsdk_console_return_e _itsdk_secStore_consolePriv(char * buffer, uint8_t
 					  if ( itsdk_sigfox_resetFactoryDefaults(true) != SIGFOX_INIT_SUCESS ) ret=1;
 					#endif
 					#if ( defined(ITSDK_SIGFOX_ENCRYPTION) && ( ITSDK_SIGFOX_ENCRYPTION > 0 )) || (defined(ITSDK_LORAWAN_ENCRYPTION) && ( ITSDK_LORAWAN_ENCRYPTION > 0))
-					  if ( itsdk_encrypt_resetFactoryDefaults(true) != ENCRYPT_RETURN_SUCESS ) ret =1;
+					  if ( itsdk_encrypt_resetFactoryDefaults(BOOL_TRUE) != ENCRYPT_RETURN_SUCESS ) ret =1;
 					#endif
 					#if defined(ITSDK_WITH_LORAWAN_LIB) && ITSDK_WITH_LORAWAN_LIB == __ENABLE
 					  if ( itsdk_lorawan_resetFactoryDefaults(true) != LORAWAN_RETURN_SUCESS ) ret=1;
@@ -732,7 +733,7 @@ static itsdk_console_return_e _itsdk_secStore_consolePriv(char * buffer, uint8_t
 			 #endif
 			 #if ( defined(ITSDK_SIGFOX_ENCRYPTION) && ( ITSDK_SIGFOX_ENCRYPTION > 0 )) || (defined(ITSDK_LORAWAN_ENCRYPTION) && ( ITSDK_LORAWAN_ENCRYPTION > 0))
 			  case 'Y':
-				  if ( itsdk_encrypt_resetFactoryDefaults(true) == ENCRYPT_RETURN_SUCESS ) {
+				  if ( itsdk_encrypt_resetFactoryDefaults(BOOL_TRUE) == ENCRYPT_RETURN_SUCESS ) {
 					  _itsdk_console_printf("OK\r\n");
 					  return ITSDK_CONSOLE_SUCCES;
 				  } else {
@@ -884,6 +885,15 @@ static itsdk_console_return_e _itsdk_secStore_consolePriv(char * buffer, uint8_t
 			case 'C':
 				// ITSDK_SS_LORA_OTAA_NWKKEY
 				return __updateField(buffer, sz, b, ITSDK_SS_LORA_OTAA_NWKKEY);
+			case 'd':
+			case 'D': {
+				// ITSDK_SS_LORA_OTAA_APPKEY + ITSDK_SS_LORA_OTAA_NWKKEY
+				itsdk_console_return_e ret;
+				if ( (ret = __updateField(buffer, sz, b, ITSDK_SS_LORA_OTAA_NWKKEY)) == ITSDK_CONSOLE_SUCCES ) {
+					ret = __updateField(buffer, sz, b, ITSDK_SS_LORA_OTAA_APPKEY);
+				}
+				return ret;
+			}
 		#endif
 	#endif
 	#if ( defined(ITSDK_SIGFOX_ENCRYPTION) && ( ITSDK_SIGFOX_ENCRYPTION & __PAYLOAD_ENCRYPT_AESCTR ) > 0 ) || ( defined(ITSDK_LORAWAN_ENCRYPTION) && (( ITSDK_LORAWAN_ENCRYPTION & __PAYLOAD_ENCRYPT_AESCTR ) > 0) )

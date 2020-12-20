@@ -35,18 +35,6 @@
 
 #ifdef ITSDK_WITH_SIGFOX_LIB
 
-#if (ITSDK_LOGGER_MODULE & __LOG_MOD_STKSIGFOX) > 0
-#define LOG_INFO_SIGFOXSTK(x)		log_info x
-#define LOG_WARN_SIGFOXSTK(x) 		log_warn x
-#define LOG_ERROR_SIGFOXSTK(x)		log_error x
-#define LOG_DEBUG_SIGFOXSTK(x)		log_debug x
-#else
-#define LOG_INFO_SIGFOXSTK(x)
-#define LOG_WARN_SIGFOXSTK(x)
-#define LOG_ERROR_SIGFOXSTK(x)
-#define LOG_DEBUG_SIGFOXSTK(x)
-#endif
-
 
 typedef enum {
 	SIGFOX_INIT_SUCESS = 0,
@@ -114,9 +102,9 @@ itsdk_sigfox_init_t itsdk_sigfox_setup();
 itsdk_sigfox_init_t itsdk_sigfox_loop();
 itsdk_sigfox_init_t itsdk_sigfox_deinit();
 itsdk_sigfox_init_t itsdk_sigfox_getCurrentRcz(uint8_t * rcz);
-itsdk_sigfox_init_t itsdk_sigfox_getTxPower(uint8_t * power);
-itsdk_sigfox_init_t itsdk_sigfox_setTxPower(uint8_t power);
-itsdk_sigfox_init_t itsdk_sigfox_setTxPower_ext(uint8_t power, bool force);
+itsdk_sigfox_init_t itsdk_sigfox_getTxPower(int8_t * power);
+itsdk_sigfox_init_t itsdk_sigfox_setTxPower(int8_t power);
+itsdk_sigfox_init_t itsdk_sigfox_setTxPower_ext(int8_t power, bool force);
 itsdk_sigfox_init_t itsdk_sigfox_setTxSpeed(itdsk_sigfox_speed_t speed);
 itsdk_sigfox_init_t itsdk_sigfox_getTxSpeed(itdsk_sigfox_speed_t * speed);
 itsdk_sigfox_init_t itsdk_sigfox_getDeviceId(itsdk_sigfox_device_is_t * devId);
@@ -182,17 +170,19 @@ itsdk_sigfox_init_t itsdk_sigfox_getKEY(uint8_t * key);
 // Logging
 // --------------------------------------------------------------------
 
-#if (ITSDK_LOGGER_MODULE & __LOG_MOD_SIGFOX) > 0
-#define LOG_INFO_SIGFOX(x)		log_info x
-#define LOG_WARN_SIGFOX(x) 		log_warn x
-#define LOG_ERROR_SIGFOX(x)		log_error x
-#define LOG_DEBUG_SIGFOX(x)		log_debug x
+
+#if (ITSDK_LOGGER_MODULE & __LOG_MOD_STKSIGFOX) > 0
+#define LOG_INFO_SIGFOXSTK(x)		log_info x
+#define LOG_WARN_SIGFOXSTK(x) 		log_warn x
+#define LOG_ERROR_SIGFOXSTK(x)		log_error x
+#define LOG_DEBUG_SIGFOXSTK(x)		log_debug x
 #else
-#define LOG_INFO_SIGFOX(x)
-#define LOG_WARN_SIGFOX(x)
-#define LOG_ERROR_SIGFOX(x)
-#define LOG_DEBUG_SIGFOX(x)
+#define LOG_INFO_SIGFOXSTK(x)
+#define LOG_WARN_SIGFOXSTK(x)
+#define LOG_ERROR_SIGFOXSTK(x)
+#define LOG_DEBUG_SIGFOXSTK(x)
 #endif
+
 
 #endif //ITSDK_WITH_SIGFOX_LIB
 

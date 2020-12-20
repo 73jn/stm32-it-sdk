@@ -46,8 +46,8 @@ uint8_t tabResult[5];
 uint8_t tabToPrint[5];
 #if ( ITSDK_WITH_UART_RXIRQ & __UART_USART1 ) > 0 || ( ITSDK_WITH_UART_RXIRQ & __UART_LPUART1 ) > 0
 uint8_t __serial1_buffer[ITSDK_WITH_UART_RXIRQ_BUFSZ];
-volatile uint8_t __serial1_bufferRd;
-volatile uint8_t __serial1_bufferWr;
+volatile uint8_t __serial1_bufferRd = 0;
+volatile uint8_t __serial1_bufferWr = 0;
 #endif
 #if ( ITSDK_WITH_UART_RXIRQ & __UART_USART2 ) > 0
 uint8_t __serial2_buffer[ITSDK_WITH_UART_RXIRQ_BUFSZ];
@@ -62,6 +62,9 @@ int serial2Counter = 0;
  */
 void serial1_init() {
 #if ( ITSDK_WITH_UART_RXIRQ & __UART_USART1 ) > 0 || ( ITSDK_WITH_UART_RXIRQ & __UART_LPUART1 ) > 0
+    // Reset circular buffer
+    __serial1_bufferRd = 0;
+    __serial1_bufferWr = 0;
 	#if ( ITSDK_WITH_UART_RXIRQ & __UART_LPUART1 ) > 0
 		UART_HandleTypeDef * _uart = &hlpuart1;
 	#elif  ( ITSDK_WITH_UART_RXIRQ & __UART_USART1 ) > 0
@@ -76,9 +79,6 @@ void serial1_init() {
     _uart->Instance->RDR;
     _uart->Instance->ISR;
     _uart->Instance->ICR;
-    // Reset circular buffer
-    __serial1_bufferRd = 0;
-    __serial1_bufferWr = 0;
 #endif
 }
 
@@ -182,7 +182,9 @@ serial_read_response_e serial1_read(char * ch) {
 
 	// get one of the pending char if some.
 	if (__HAL_UART_GET_FLAG(&hlpuart1, UART_FLAG_RXNE)){
-		*ch = hlpuart1.Instance->RDR & 0x1FF;
+		UART_MASK_COMPUTATION(&hlpuart1);
+		*ch = hlpuart1.Instance->RDR & hlpuart1.Mask;
+
 		if (__HAL_UART_GET_FLAG(&hlpuart1, UART_FLAG_RXNE)) {
 			return SERIAL_READ_PENDING_CHAR;
 		} else {
@@ -199,7 +201,8 @@ serial_read_response_e serial1_read(char * ch) {
 
 	// get one of the pending char if some.
 	if (__HAL_UART_GET_FLAG(&huart1, UART_FLAG_RXNE)){
-		*ch = huart1.Instance->RDR & 0x1FF;
+		UART_MASK_COMPUTATION(&huart1);
+		*ch = huart1.Instance->RDR & huart1.Mask;
 		if (__HAL_UART_GET_FLAG(&huart1, UART_FLAG_RXNE)) {
 			return SERIAL_READ_PENDING_CHAR;
 		} else {
@@ -227,6 +230,10 @@ itsdk_bool_e serial1_changeBaudRate(serial_baudrate_e bd) {
 		return BOOL_FALSE;
 	#endif
 	switch( bd ) {
+		case SERIAL_SPEED_300 : lhuart->Init.BaudRate = 300; break;
+		case SERIAL_SPEED_600 : lhuart->Init.BaudRate = 600; break;
+		case SERIAL_SPEED_1200 : lhuart->Init.BaudRate = 1200; break;
+		case SERIAL_SPEED_2400 : lhuart->Init.BaudRate = 2400; break;
 		case SERIAL_SPEED_4800 : lhuart->Init.BaudRate = 4800; break;
 		default:
 		case SERIAL_SPEED_9600 : lhuart->Init.BaudRate = 9600; break;
@@ -252,6 +259,8 @@ itsdk_bool_e serial1_changeBaudRate(serial_baudrate_e bd) {
  */
 void serial2_init() {
 #if  ( ITSDK_WITH_UART_RXIRQ & __UART_USART2 ) > 0
+    __serial2_bufferRd = 0;
+    __serial2_bufferWr = 0;
     __HAL_UART_ENABLE_IT(&huart2,UART_IT_ERR);
     __HAL_UART_ENABLE_IT(&huart2,UART_IT_RXNE);
     __HAL_UART_DISABLE_IT(&huart2,UART_IT_TC);
@@ -260,8 +269,6 @@ void serial2_init() {
     huart2.Instance->RDR;
     huart2.Instance->ISR;
     huart2.Instance->ICR;
-    __serial2_bufferRd = 0;
-    __serial2_bufferWr = 0;
 #endif
 }
 
@@ -339,7 +346,8 @@ serial_read_response_e serial2_read(char * ch) {
 
 	// get one of the pending char if some.
 	if (__HAL_UART_GET_FLAG(&huart2, UART_FLAG_RXNE)){
-		*ch = huart2.Instance->RDR & 0x1FF;
+		UART_MASK_COMPUTATION(&huart2);
+		*ch = huart2.Instance->RDR & huart2.Mask;
 		if (__HAL_UART_GET_FLAG(&huart2, UART_FLAG_RXNE)) {
 			return SERIAL_READ_PENDING_CHAR;
 		} else {
@@ -359,12 +367,16 @@ serial_read_response_e serial2_read(char * ch) {
  */
 itsdk_bool_e serial2_changeBaudRate(serial_baudrate_e bd) {
 	UART_HandleTypeDef * lhuart;
-	#if  ( ITSDK_WITH_UART_RXIRQ & __UART_USART2 )
+	#if  ( ITSDK_WITH_UART_RXIRQ & __UART_USART2 ) > 0
 	   lhuart = &huart2;
 	#else
 		return BOOL_FALSE;
 	#endif
 	switch( bd ) {
+		case SERIAL_SPEED_300 : lhuart->Init.BaudRate = 300; break;
+		case SERIAL_SPEED_600 : lhuart->Init.BaudRate = 600; break;
+		case SERIAL_SPEED_1200 : lhuart->Init.BaudRate = 1200; break;
+		case SERIAL_SPEED_2400 : lhuart->Init.BaudRate = 2400; break;
 		case SERIAL_SPEED_4800 : lhuart->Init.BaudRate = 4800; break;
 		default:
 		case SERIAL_SPEED_9600 : lhuart->Init.BaudRate = 9600; break;
